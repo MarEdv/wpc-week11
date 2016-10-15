@@ -46,7 +46,7 @@ type Msg =
         | Clear
 
 init : (Model, Cmd Msg)
-init = (Model [] DrawPolygon (CircleSpec {x=0,y=0} 0) [], Cmd.none)
+init = (Model [] CircleCenter (CircleSpec {x=0,y=0} 0) [], Cmd.none)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -130,8 +130,8 @@ view model =
                       CircleRadius ->
                           let
                               point = model.currentCircleSpec.center
-                              x' = (/) (toFloat point.x) 5
-                              y' = (/) (toFloat point.y) 5
+                              x' = (/) (toFloat point.x) 1
+                              y' = (/) (toFloat point.y) 1
                           in
                               [drawPoint "#FF0000" (truncate x') (truncate y')]
                       _ -> []
@@ -147,21 +147,57 @@ view model =
           [ drawOrangePolygon model.positions
           ]
          ++
-          (map (\c -> drawCircle c) model.circles)
+          (List.concat (map (\c -> drawCircle c) model.circles))
          ++
           middlePoint
         )
        , fieldset
           []
-          [ radio "Polygon" (SwitchTo Polygon)
-          , radio "Circle" (SwitchTo Circle)
-          , button [onClick Clear] [text "Clear"]
+          [
+            --radio "Polygon" (SwitchTo Polygon)
+          --, radio "Circle" (SwitchTo Circle)
+          --,
+              button [onClick Clear] [text "Clear"]
           ]
 
       ]
 
-drawCircle : CircleSpec -> Svg msg
+drawCircle : CircleSpec -> List (Svg msg)
 drawCircle circle' =
+    let
+        x = circle'.center.x
+        y = circle'.center.y
+        radius = circle'.radius
+    in
+        dc x y radius 0 0
+
+dc : Int -> Int -> Int -> Int -> Int -> List (Svg msg)
+dc x0 y0 x y err =
+    let
+        points =
+            [drawPoint "#000000" (x0 + x) (y0 + y)] ++
+            [drawPoint "#000000" (x0 + y) (y0 + x)] ++
+            [drawPoint "#000000" (x0 - y) (y0 + x)] ++
+            [drawPoint "#000000" (x0 - x) (y0 + y)] ++
+            [drawPoint "#000000" (x0 - x) (y0 - y)] ++
+            [drawPoint "#000000" (x0 - y) (y0 - x)] ++
+            [drawPoint "#000000" (x0 + y) (y0 - x)] ++
+            [drawPoint "#000000" (x0 + x) (y0 - y)]
+        y' = y + 5
+        err' = err + (1 + ((*) y 2))
+    in
+        if (x+5 < y')
+        then
+            []
+        else
+          if (((*) 2 (err' - x)) + 1 > 0)
+          then
+            points ++ (dc x0 y0 (x-5) y' (err' + (1 - ((*) 2 x))))
+          else
+            points ++ (dc x0 y0 x y' err')
+
+drawCircle' : CircleSpec -> Svg msg
+drawCircle' circle' =
     circle
         [ cx (toString circle'.center.x)
         , cy (toString circle'.center.y)
@@ -187,12 +223,13 @@ drawPolygon color' positions =
     ]
     []
 
+
 drawPoint : String -> Int -> Int -> Svg msg
 drawPoint color' x' y' =
   rect
     [fill color'
-    , x (toString ((*) x' 5))
-    , y (toString ((*) y' 5))
+    , x (toString ((*) x' 1))
+    , y (toString ((*) y' 1))
     , width "5", height "5"
     ]
     []
